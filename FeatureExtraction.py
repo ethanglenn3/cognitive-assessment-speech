@@ -4,17 +4,11 @@
 # or Mild Cognitive Impairment.
 
 import os
-import scipy
-from scipy.io import wavfile
-import scipy.io
 import librosa as lb
 import pandas as pd
 import numpy as np
 import parselmouth
 from parselmouth.praat import call
-import torch
-from torch import nn
-from torch import optim
 
 # Loop through all `.wav` files in the directory
 def loadWav(data_dir, tArray):
@@ -50,6 +44,26 @@ def frame(audioRecording,samplingRate,frameSize,overlap):
         audioFrames[i] = frameData * hanningWindow
     
     return audioFrames
+
+def pad_features(frames, max_frames):
+    # Find the number of frames in the current recording
+    num_frames = len(frames)
+    
+    # If the number of frames is less than max_frames, pad the frames with zeroed lists
+    if num_frames < max_frames:
+        # Calculate how many frames need to be added
+        num_frames_to_add = max_frames - num_frames
+        
+        # Create the padding frames, each frame is a list of zeros of the same length as the first frame
+        padding_frame = [0] * len(frames[0])  # A list of zeros with the same length as the first frame
+        
+        # Convert padding_frame to a 2D array (num_frames_to_add x len(frames[0]))
+        padding_frame = np.array([padding_frame] * num_frames_to_add)
+
+         # Append the padding frames to the frames list
+        frames = np.concatenate([frames, padding_frame], axis=0)  # Concatenate along the first axis (rows)
+    
+    return frames
 
 # Function for calculating energy
 def extractEnergy(audioFrame):
@@ -155,6 +169,22 @@ for j in range(testAM.shape[0]):
 
     testAMFrames.append(curFrame)
 
+# Calculate the maximum number of frames across all datasets
+maxFrames = max(max(len(frames) for frames in trainFrames),
+            max(len(frames) for frames in testTAUKFrames),
+            max(len(frames) for frames in testAMFrames)
+)
+
+# Pad the dataset
+for i in range(len(trainFrames)):
+    trainFrames[i] = pad_features(trainFrames[i], maxFrames)
+
+for i in range(len(testTAUKFrames)):
+    testTAUKFrames[i] = pad_features(testTAUKFrames[i], maxFrames)
+
+for i in range(len(testAMFrames)):
+    testAMFrames[i] = pad_features(testAMFrames[i], maxFrames)
+
 # 13 MFCCs, Corresponding Delta MFCCs
 trainMFCCs, trainDeltaMFCCs = [], []
 testTAUKMFCCs, testTAUKDeltaMFCCs = [], []
@@ -169,7 +199,6 @@ for j in range(train.shape[0]):
     deltaMFCCS = lb.feature.delta(mfccs)
     trainMFCCs.append(mfccs)
     trainDeltaMFCCs.append(deltaMFCCS)
-
 
 for j in range(testTAUK.shape[0]):
     frameSamples = int(frameSize * testTAUK[j,1])
@@ -186,6 +215,29 @@ for j in range(testAM.shape[0]):
     deltaMFCCS = lb.feature.delta(mfccs)
     testAMMFCCs.append(mfccs)
     testAMDeltaMFCCs.append(deltaMFCCS)
+
+# Swap the MFCCs and Frames for fitting into Tensor
+trainMFCCs = [np.swapaxes(mfccs, 0, 1) for mfccs in trainMFCCs]
+trainDeltaMFCCs = [np.swapaxes(delta, 0, 1) for delta in trainDeltaMFCCs]
+
+testTAUKMFCCs = [np.swapaxes(mfccs, 0, 1) for mfccs in testTAUKMFCCs]
+testTAUKDeltaMFCCs = [np.swapaxes(delta, 0, 1) for delta in testTAUKDeltaMFCCs]
+
+testAMMFCCs = [np.swapaxes(mfccs, 0, 1) for mfccs in testAMMFCCs]
+testAMDeltaMFCCs = [np.swapaxes(delta, 0, 1) for delta in testAMDeltaMFCCs]
+
+# Loop through and pad all MFCCs and deltaMFCCs
+for i in range(len(trainMFCCs)):
+    trainMFCCs[i] = pad_features(trainMFCCs[i], maxFrames)
+    trainDeltaMFCCs[i] = pad_features(trainDeltaMFCCs[i], maxFrames)
+
+for i in range(len(testTAUKMFCCs)):
+    testTAUKMFCCs[i] = pad_features(testTAUKMFCCs[i], maxFrames)
+    testTAUKDeltaMFCCs[i] = pad_features(testTAUKDeltaMFCCs[i], maxFrames)
+
+for i in range(len(testAMMFCCs)):
+    testAMMFCCs[i] = pad_features(testAMMFCCs[i], maxFrames)
+    testAMDeltaMFCCs[i] = pad_features(testAMDeltaMFCCs[i], maxFrames)
 
 # Energy & Spectral Flux
 trainEnergy, trainFlux = [], []
@@ -271,7 +323,7 @@ for i in range(len(testAMFrames)):
     testAMFlux.append(curAudioFlux)
 
 # Shimmer & Jitter
-trainJitterRap, trainShimmerApq = [], []
+""" trainJitterRap, trainShimmerApq = [], []
 testTAUKJitterRap, testTAUKShimmerApq = [], []
 testAMFJitterRap, testAMShimmerApq = [], []
 
@@ -328,4 +380,87 @@ for i in range(len(testAMFrames)):
 
     # Append the results for the current recording
     testAMFJitterRap.append(curJitterRap)
-    testAMShimmerApq.append(curShimmerApq)
+    testAMShimmerApq.append(curShimmerApq) """
+
+#-- Combine Features --------------------------------------------
+# Ensure all feature arrays are NumPy arrays (if they aren't already)
+trainMFCCs = np.array(trainMFCCs)
+trainDeltaMFCCs = np.array(trainDeltaMFCCs)
+trainEnergy = np.array(trainEnergy)
+trainFlux = np.array(trainFlux)
+
+# Initialize feature tensors
+trainFeatureTensor = []
+testTAUKFeatureTensor = [] 
+testAMFeatureTensor = []
+
+# Process train dataset
+for i in range(len(trainFrames)):  # Loop over each recording
+    frameFeatures = []
+
+    for j in range(maxFrames):  # Loop over each frame in the recording
+        # Collect the features for the j-th frame of the i-th recording
+        features = [
+            trainMFCCs[i, :, j],            # MFCCs (13 values for the j-th frame)
+            trainDeltaMFCCs[i, :, j],       # Delta MFCCs (13 values for the j-th frame)
+            trainEnergy[i, j],              # Energy (1 value per frame)
+            trainFlux[i, j],                # Spectral Flux (1 value per frame)
+            #trainJitterRap[i, j],           # Uncomment if using Jitter
+            #trainShimmerApq[i, j]          # Uncomment if using Shimmer
+        ]
+        frameFeatures.append(features)
+
+    # Append the features for all frames of the i-th recording
+    trainFeatureTensor.append(frameFeatures)
+
+# Convert to a NumPy array of objects to handle variable-length frames
+trainFeatureTensor = np.array(trainFeatureTensor, dtype=object)
+
+# Process testTAUK dataset
+for i in range(len(testTAUKFrames)):  # Loop over each recording
+    frameFeatures = []
+
+    for j in range(maxFrames):  # Loop over each frame in the recording
+        # Collect the features for the j-th frame of the i-th recording
+        features = [
+            testTAUKMFCCs[i, :, j],         # MFCCs (13 values for the j-th frame)
+            testTAUKDeltaMFCCs[i, :, j],    # Delta MFCCs (13 values for the j-th frame)
+            testTAUKEnergy[i, j],           # Energy (1 value per frame)
+            testTAUKFlux[i, j],             # Spectral Flux (1 value per frame)
+            #testTAUKJitterRap[i, j],       # Uncomment if using Jitter
+            #testTAUKShimmerApq[i, j]      # Uncomment if using Shimmer
+        ]
+        frameFeatures.append(features)
+
+    # Append the features for all frames of the i-th recording
+    testTAUKFeatureTensor.append(frameFeatures)
+
+# Convert to a NumPy array of objects to handle variable-length frames
+testTAUKFeatureTensor = np.array(testTAUKFeatureTensor, dtype=object)
+
+# Process testAM dataset
+for i in range(len(testAMFrames)):  # Loop over each recording
+    frameFeatures = []
+
+    for j in range(maxFrames):  # Loop over each frame in the recording
+        # Collect the features for the j-th frame of the i-th recording
+        features = [
+            testAMMFCCs[i, :, j],           # MFCCs (13 values for the j-th frame)
+            testAMDeltaMFCCs[i, :, j],      # Delta MFCCs (13 values for the j-th frame)
+            testAMEnergy[i, j],             # Energy (1 value per frame)
+            testAMFlux[i, j],               # Spectral Flux (1 value per frame)
+            #testAMFJitterRap[i, j],        # Uncomment if using Jitter
+            #testAMShimmerApq[i, j]        # Uncomment if using Shimmer
+        ]
+        frameFeatures.append(features)
+
+    # Append the features for all frames of the i-th recording
+    testAMFeatureTensor.append(frameFeatures)
+
+# Convert to a NumPy array of objects to handle variable-length frames
+testAMFeatureTensor = np.array(testAMFeatureTensor, dtype=object)
+
+# Save the feature tensors as .npy files
+np.save('trainFeatureTensor.npy', trainFeatureTensor)
+np.save('testTAUKFeatureTensor.npy', testTAUKFeatureTensor)
+np.save('testAMFeatureTensor.npy', testAMFeatureTensor)

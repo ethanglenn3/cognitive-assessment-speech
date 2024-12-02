@@ -386,79 +386,23 @@ for i in range(len(testAMFrames)):
 # Ensure all feature arrays are NumPy arrays (if they aren't already)
 trainMFCCs = np.array(trainMFCCs)
 trainDeltaMFCCs = np.array(trainDeltaMFCCs)
-trainEnergy = np.array(trainEnergy)
-trainFlux = np.array(trainFlux)
+trainEnergy = np.expand_dims(np.array(trainEnergy), axis=-1)
+trainFlux = np.expand_dims(np.array(trainFlux), axis=-1)
 
-# Initialize feature tensors
-trainFeatureTensor = []
-testTAUKFeatureTensor = [] 
-testAMFeatureTensor = []
+testTAUKMFCCs = np.array(testTAUKMFCCs)
+testTAUKDeltaMFCCs = np.array(testTAUKDeltaMFCCs)
+testTAUKEnergy = np.expand_dims(np.array(testTAUKEnergy), axis=-1)
+testTAUKFlux = np.expand_dims(np.array(testTAUKFlux), axis=-1)
 
-# Process train dataset
-for i in range(len(trainFrames)):  # Loop over each recording
-    frameFeatures = []
+testAMMFCCs = np.array(testAMMFCCs)
+testAMDeltaMFCCs = np.array(testAMDeltaMFCCs)
+testAMEnergy = np.expand_dims(np.array(testAMEnergy), axis=-1)
+testAMFlux = np.expand_dims(np.array(testAMFlux), axis=-1)
 
-    for j in range(maxFrames):  # Loop over each frame in the recording
-        # Collect the features for the j-th frame of the i-th recording
-        features = [
-            trainMFCCs[i, :, j],            # MFCCs (13 values for the j-th frame)
-            trainDeltaMFCCs[i, :, j],       # Delta MFCCs (13 values for the j-th frame)
-            trainEnergy[i, j],              # Energy (1 value per frame)
-            trainFlux[i, j],                # Spectral Flux (1 value per frame)
-            #trainJitterRap[i, j],           # Uncomment if using Jitter
-            #trainShimmerApq[i, j]          # Uncomment if using Shimmer
-        ]
-        frameFeatures.append(features)
-
-    # Append the features for all frames of the i-th recording
-    trainFeatureTensor.append(frameFeatures)
-
-# Convert to a NumPy array of objects to handle variable-length frames
-trainFeatureTensor = np.array(trainFeatureTensor, dtype=object)
-
-# Process testTAUK dataset
-for i in range(len(testTAUKFrames)):  # Loop over each recording
-    frameFeatures = []
-
-    for j in range(maxFrames):  # Loop over each frame in the recording
-        # Collect the features for the j-th frame of the i-th recording
-        features = [
-            testTAUKMFCCs[i, :, j],         # MFCCs (13 values for the j-th frame)
-            testTAUKDeltaMFCCs[i, :, j],    # Delta MFCCs (13 values for the j-th frame)
-            testTAUKEnergy[i, j],           # Energy (1 value per frame)
-            testTAUKFlux[i, j],             # Spectral Flux (1 value per frame)
-            #testTAUKJitterRap[i, j],       # Uncomment if using Jitter
-            #testTAUKShimmerApq[i, j]      # Uncomment if using Shimmer
-        ]
-        frameFeatures.append(features)
-
-    # Append the features for all frames of the i-th recording
-    testTAUKFeatureTensor.append(frameFeatures)
-
-# Convert to a NumPy array of objects to handle variable-length frames
-testTAUKFeatureTensor = np.array(testTAUKFeatureTensor, dtype=object)
-
-# Process testAM dataset
-for i in range(len(testAMFrames)):  # Loop over each recording
-    frameFeatures = []
-
-    for j in range(maxFrames):  # Loop over each frame in the recording
-        # Collect the features for the j-th frame of the i-th recording
-        features = [
-            testAMMFCCs[i, :, j],           # MFCCs (13 values for the j-th frame)
-            testAMDeltaMFCCs[i, :, j],      # Delta MFCCs (13 values for the j-th frame)
-            testAMEnergy[i, j],             # Energy (1 value per frame)
-            testAMFlux[i, j],               # Spectral Flux (1 value per frame)
-            #testAMFJitterRap[i, j],        # Uncomment if using Jitter
-            #testAMShimmerApq[i, j]        # Uncomment if using Shimmer
-        ]
-        frameFeatures.append(features)
-
-    # Append the features for all frames of the i-th recording
-    testAMFeatureTensor.append(frameFeatures)
-
-# Convert to a NumPy array of objects to handle variable-length frames
-testAMFeatureTensor = np.array(testAMFeatureTensor, dtype=object)
+# Feature tensors
+trainFeatureTensor = np.concatenate([trainMFCCs, trainDeltaMFCCs, trainEnergy, trainFlux], axis=-1)
+testTAUKFeatureTensor = np.concatenate([testTAUKMFCCs, testTAUKDeltaMFCCs, testTAUKEnergy, testTAUKFlux], axis=-1)
+testAMFeatureTensor = np.concatenate([testAMMFCCs, testAMDeltaMFCCs, testAMEnergy, testAMFlux], axis=-1)
 
 # Save the feature tensors as .npy files
 np.save('trainFeatureTensor.npy', trainFeatureTensor)

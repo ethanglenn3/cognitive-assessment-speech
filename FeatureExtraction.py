@@ -84,21 +84,6 @@ def calculateSpectralFlux(currentFrame, previousFrame):
     flux = np.sum((currentSpectrum - previousSpectrum)**2)
     return flux
 
-# Function to calculate shimmer and jitter using Pareselmouth
-def calcShimmerJitter(audioFrame, samplingRate):
-    sound = parselmouth.Sound(audioFrame, samplingRate)
-    f0min = 20
-    f0max = int(samplingRate/2)
-    pointProcess = call(sound, "To PointProcess (periodic, cc)", f0min, f0max)
-
-    # Calculate Jitter (local) and Jitter (rap) using Praat's call function
-    jitterRap = call(pointProcess, "Get jitter (rap)", 0, 0, 0.0001, 0.02, 1.3)
-
-    # Calculate Shimmer (local) and Shimmer (apq11) using Praat's call function
-    shimmerApq11 = call([sound, pointProcess], "Get shimmer (apq11)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
-
-    return jitterRap, shimmerApq11
-
 #-- Load Data -----------------------------------
 # Initialize an empty list to store features
 train = []
@@ -118,6 +103,27 @@ testAM = loadWav(testAM_dir,testAM)
 train = np.array(train, dtype=object)
 testTAUK = np.array(testTAUK, dtype=object)
 testAM = np.array(testAM, dtype=object)
+
+# Normalize train
+for i in range(len(train)):
+    signal, rate = train[i]  # Extract signal and sampling rate
+    max_val = np.max(np.abs(signal))
+    if max_val != 0:  # Avoid division by zero
+        train[i] = (signal / max_val, rate)  # Normalize signal and reassign
+
+# Normalize testTAUK
+for i in range(len(testTAUK)):
+    signal, rate = testTAUK[i]  # Extract signal and sampling rate
+    max_val = np.max(np.abs(signal))
+    if max_val != 0:
+        testTAUK[i] = (signal / max_val, rate)  # Normalize signal and reassign
+
+# Normalize testAM
+for i in range(len(testAM)):
+    signal, rate = testAM[i]  # Extract signal and sampling rate
+    max_val = np.max(np.abs(signal))
+    if max_val != 0:
+        testAM[i] = (signal / max_val, rate)  # Normalize signal and reassign
 
 # Get Truth Labels
 col = ['dx']
@@ -321,66 +327,6 @@ for i in range(len(testAMFrames)):
 
     testAMEnergy.append(curAudioEnergy)
     testAMFlux.append(curAudioFlux)
-
-# Shimmer & Jitter
-""" trainJitterRap, trainShimmerApq = [], []
-testTAUKJitterRap, testTAUKShimmerApq = [], []
-testAMFJitterRap, testAMShimmerApq = [], []
-
-
-for i in range(len(trainFrames)):
-    curJitterRap = []
-    curShimmerApq = []
-    curAudio = trainFrames[i]
-    samplingRate = train[i,1]
-
-    for j in range(len(curAudio)):
-        # Calculate jitter and shimmer for the current frame
-        jitterRap, shimmerApq11 = calcShimmerJitter(curAudio[j], samplingRate)
-
-        # Append the calculated values to the corresponding lists
-        curJitterRap.append(jitterRap)
-        curShimmerApq.append(shimmerApq11)
-
-    # After processing all frames for this recording, append the results
-    trainJitterRap.append(curJitterRap)
-    trainShimmerApq.append(curShimmerApq)
-
-for i in range(len(testTAUKFrames)):
-    curJitterRap = []
-    curShimmerApq = []
-    curAudio = trainFrames[i]
-    samplingRate = train[i,1]
-
-    for j in range(len(curAudio)):
-        # Calculate jitter and shimmer for the current frame
-        jitterRap, shimmerApq11 = calcShimmerJitter(curAudio[j], samplingRate)
-
-        # Append the calculated values to the corresponding lists
-        curJitterRap.append(jitterRap)
-        curShimmerApq.append(shimmerApq11)
-
-    # Append the results for the current recording
-    testTAUKJitterRap.append(curJitterRap)
-    testTAUKShimmerApq.append(curShimmerApq)
-
-for i in range(len(testAMFrames)):
-    curJitterRap = []
-    curShimmerApq = []
-    curAudio = trainFrames[i]
-    samplingRate = train[i,1]
-
-    for j in range(len(curAudio)):
-        # Calculate jitter and shimmer for the current frame
-        jitterRap, shimmerApq11 = calcShimmerJitter(curAudio[j], samplingRate)
-
-        # Append the calculated values to the corresponding lists
-        curJitterRap.append(jitterRap)
-        curShimmerApq.append(shimmerApq11)
-
-    # Append the results for the current recording
-    testAMFJitterRap.append(curJitterRap)
-    testAMShimmerApq.append(curShimmerApq) """
 
 #-- Combine Features --------------------------------------------
 # Ensure all feature arrays are NumPy arrays (if they aren't already)

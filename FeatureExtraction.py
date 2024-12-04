@@ -76,9 +76,12 @@ def calculateSpectralFlux(currentFrame, previousFrame):
     currentSpectrum = np.abs(np.fft.fft(currentFrame))
     previousSpectrum = np.abs(np.fft.fft(previousFrame))
 
-    # Normalize magnitude spectra
-    currentSpectrum /= np.sum(currentSpectrum)
-    previousSpectrum /= np.sum(previousSpectrum)
+    # Calculate the sum of the spectrums (for checking small values)
+    currentSpectrumSum = np.sum(currentSpectrum)
+    previousSpectrumSum = np.sum(previousSpectrum)
+
+    if currentSpectrumSum < 1e-10 or previousSpectrumSum < 1e-10:
+        return 0  # Return 0 if any spectrum sum is too small (near zero)
 
     # Calculate spectral flux
     flux = np.sum((currentSpectrum - previousSpectrum)**2)
@@ -263,8 +266,8 @@ for i in range(len(trainFrames)):
         curAudioEnergy.append(frameEnergy)
 
         # Spectral Flux
-        if j == 1:      
-            flux = 0        # Remove NaN value of the first frame
+        if j == 0 or j == 1:      
+            flux = 0        # Remove NaN value of the first 2 frames
         else:
             flux = calculateSpectralFlux(curAudio[j], previousFrame)
             
@@ -289,7 +292,7 @@ for i in range(len(testTAUKFrames)):
         curAudioEnergy.append(frameEnergy)
 
         # Spectral Flux
-        if j == 1:      
+        if j == 0 or j == 1:         
             flux = 0        # Remove NaN value of the first frame
         else:
             flux = calculateSpectralFlux(curAudio[j], previousFrame)
@@ -315,7 +318,7 @@ for i in range(len(testAMFrames)):
         curAudioEnergy.append(frameEnergy)
 
         # Spectral Flux
-        if j == 1:      
+        if j == 0 or j == 1:         
             flux = 0        # Remove NaN value of the first frame
         else:
             flux = calculateSpectralFlux(curAudio[j], previousFrame)

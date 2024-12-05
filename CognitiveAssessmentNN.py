@@ -10,13 +10,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import confusion_matrix
 
-# Load your feature tensors and labels
-# Replace these file paths with your actual file paths
+# Load feature tensors and labels
 X_train = np.load(r'./trainFeatureTensor.npy')  # Shape: (recordings, frames, features)
 X_test_tauk = np.load(r'./testTAUKFeatureTensor.npy')  # Shape: (recordings, frames, features)
 X_test_am = np.load(r'./testAMFeatureTensor.npy')  # Shape: (recordings, frames, features)
 
-# Load corresponding labels (0 for NC, 1 for MCI) and convert to 
+# Load corresponding labels (0 for NC, 1 for MCI) and convert to ints
 label_encoder = LabelEncoder()
 
 trainTruth = label_encoder.fit_transform(np.load(r'./trainTruth.npy', allow_pickle=True))
@@ -29,7 +28,7 @@ X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(X_trai
 # Define the neural network model
 model = Sequential()
 
-# Add a Masking layer to ignore padded values (assuming padding is 0)
+# Add a Masking layer to ignore padded values 
 model.add(Masking(mask_value=0.0, input_shape=(X_train_split.shape[1], X_train_split.shape[2])))
 
 # Adding an RNN layer
@@ -101,11 +100,10 @@ results = {
     'TestAM Accuracy': test_am_acc
 }
 
-# Convert the dictionary to a pandas DataFrame
 results_df = pd.DataFrame([results])
 
 # Save the results to a CSV file
 results_df.to_csv('model_evaluation_results.csv', index=False)
 
-# Optionally, save the model for later use
+# Save the model for later use
 model.save('speech_classification_rnn_model.keras')

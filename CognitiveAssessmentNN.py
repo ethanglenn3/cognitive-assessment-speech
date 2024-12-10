@@ -31,7 +31,7 @@ model = Sequential()
 # Add a Masking layer to ignore padded values 
 model.add(Masking(mask_value=0.0, input_shape=(X_train_split.shape[1], X_train_split.shape[2])))
 
-# Adding an RNN layer
+# Adding RNN layers
 model.add(GRU(64, activation='tanh', return_sequences=True))
 model.add(Dropout(0.2))  # Adding dropout for regularization
 model.add(GRU(64, activation='tanh', return_sequences=False))

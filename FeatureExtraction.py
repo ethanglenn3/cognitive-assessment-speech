@@ -7,8 +7,6 @@ import os
 import librosa as lb
 import pandas as pd
 import numpy as np
-import parselmouth
-from parselmouth.praat import call
 
 # Loop through all `.wav` files in the directory
 def loadWav(data_dir, tArray):
@@ -145,14 +143,14 @@ testAMTruth[testAMTruth == 'ProbableAD'] = 1
 
 #-- Extract Features --------------------------------
 # Split into Narrowband Frames
-frameSize = 0.3     # 30 ms frames for narrowband
+frameSize = 0.03     # 30 ms frames for narrowband
 overlap = 0.5       # 50% overlap
 trainFrames = []
 testTAUKFrames = []
 testAMFrames = []
 
 for j in range(train.shape[0]):
-    # Grab current audio recording sampling rate form array
+    # Grab current audio recording sampling rate from array
     curTrain = train[j,0]
     curTrainSR = train[j,1]
 
@@ -161,7 +159,7 @@ for j in range(train.shape[0]):
     trainFrames.append(curFrame)
 
 for j in range(testTAUK.shape[0]):
-    # Grab current audio recording sampling rate form array
+    # Grab current audio recording sampling rate from array
     curTrain = testTAUK[j,0]
     curTrainSR = testTAUK[j,1]
 
@@ -170,7 +168,7 @@ for j in range(testTAUK.shape[0]):
     testTAUKFrames.append(curFrame)
 
 for j in range(testAM.shape[0]):
-    # Grab current audio recording sampling rate form array
+    # Grab current audio recording sampling rate from array
     curTrain = testAM[j,0]
     curTrainSR = testAM[j,1]
 
@@ -332,7 +330,7 @@ for i in range(len(testAMFrames)):
     testAMFlux.append(curAudioFlux)
 
 #-- Combine Features --------------------------------------------
-# Ensure all feature arrays are NumPy arrays (if they aren't already)
+# Ensure all feature arrays are NumPy arrays
 trainMFCCs = np.array(trainMFCCs)
 trainDeltaMFCCs = np.array(trainDeltaMFCCs)
 trainEnergy = np.expand_dims(np.array(trainEnergy), axis=-1)

@@ -20,7 +20,7 @@ testAM_counts = np.unique(testAMTruth, return_counts=True)
 # Load saved model
 model = tf.keras.models.load_model(r'C:\Users\Ethan\OneDrive\Documents\College\EELE 578\Project\GRU_2Layer64\speech_classification_rnn_model.keras')
 
-# Assuming testFrames and trainFrames are your test and train data
+# Predict tauk and am
 tauk_pred = model.predict(X_test_tauk)
 am_pred = model.predict(X_test_am)
 
@@ -49,7 +49,7 @@ am_recall_0 = recall_score(testAMTruth, am_pred, pos_label=0)
 am_recall_1 = recall_score(testAMTruth, am_pred, pos_label=1)
 am_uar = (am_recall_0 + am_recall_1) / 2
 
-# Now you can include the UAR in the metrics table
+# Metrics for table
 tauk_metrics = {
     "F1-Score": tauktest_f1,
     "Accuracy": tauktest_accuracy,
